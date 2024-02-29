@@ -17,9 +17,11 @@ from src.utils_gcn import *
 from src.models import GCN
 import time
 from scipy.sparse import csr_matrix
-import tensorflow as tf
+# import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import numpy as np
 
+tf.disable_eager_execution()
 
 class GnnModel:
     def __init__(self, FLAGs, node_features, one_hot_labels, adj, y_train, y_val, y_test, train_mask, val_mask, test_mask,
@@ -165,6 +167,8 @@ class GnnModel:
         t = time.time()
         feed_dict_train = construct_feed_dict(self.features_sparse_tensor, support_graph, self.y_train, self.train_mask,
                                               self.placeholders)
+        # print(self.FLAGs.dropout)
+        # import ipdb; ipdb.set_trace()
         feed_dict_train.update({self.placeholders['dropout']: self.FLAGs.dropout})
         # Training step
         outs = self.sess.run([self.model.opt_op, self.model.loss, self.model.accuracy], feed_dict=feed_dict_train)
@@ -189,6 +193,7 @@ class GnnModel:
         return soft_labels_og_graph, soft_labels_sample_graphs
 
     def train(self):
+        pred_score = []
         for epoch in range(self.FLAGs.epochs):
             if self.model_name == 'BGCN':
                 # =======================================GCNN pre train process=====================================
@@ -211,6 +216,11 @@ class GnnModel:
                                                       max_iter=1000)
                     self.train_block_model_estimators(better_initialization_flag=True, step_size_scaler=1, max_iter=200)
 
+                    # import pickle
+                    # with open('src/MMSBM_params/MMSBM_params.pkl', 'wb') as f:
+                    #     pickle.dump((self.n, self.k, self.MMSBM_community_strength, self.MMSBM_membership,
+                    #                  self.upper_tri_index), f)
+
                 if epoch > self.FLAGs.pretrain_n:
                     # ================redo the graph inference process for every 20 iterations of GCNN ===============
                     if epoch % 20 == 0:
@@ -224,7 +234,6 @@ class GnnModel:
                                                             self.MMSBM_membership, self.upper_tri_index)
                     generate_graph = csr_matrix(generate_graph)
                     adj_sparse_tensor_sample = [preprocess_adj(generate_graph)]
-
                     self.soft_prediction_labels_OG, self.soft_prediction_labels_sample_graph = self.train_one_epoch(
                         adj_sparse_tensor_sample, epoch)
 
@@ -232,6 +241,8 @@ class GnnModel:
                     if epoch > self.FLAGs.epoch_to_start_collect_weights:
                         self.MC_final_prediction_soft += self.soft_prediction_labels_sample_graph
                         self.MC_final_prediction = self.MC_final_prediction_soft.argmax(axis=1)
+
+                        pred_score.append(self.soft_prediction_labels_sample_graph)
 
                 if epoch == self.FLAGs.epochs - 1:
                     acc_sample_graph = accuracy_score(self.labels[self.test_set_index],
@@ -258,3 +269,26 @@ class GnnModel:
                 raise ValueError('Invalid argument for model: ' + str(self.FLAGs.model))
 
         print("Optimization Finished!")
+        
+        print("============= Variance of prediction score =============")
+        from src.utils_analysis import calculate_variance, calculate_entropy
+        pred_score = np.array(pred_score)
+        variance = calculate_variance(pred_score)
+        test_variance = variance[self.test_set_index]
+        test_labels = self.labels[self.test_set_index]
+        test_variance_on_true_label = test_variance[
+            np.arange(test_variance.shape[0]), test_labels]
+        avg_test_variance_on_true_label = np.mean(test_variance_on_true_label)
+        print("The average variance on the true label is {}".format(avg_test_variance_on_true_label))
+
+        print("============= Entropy of prediction score =============")
+        entropy = calculate_entropy(pred_score)
+        test_entropy = entropy[self.test_set_index]
+        test_entropy_on_true_label = test_entropy[
+            np.arange(test_entropy.shape[0]), test_labels]
+        avg_test_entropy_on_true_label = np.mean(test_entropy_on_true_label)
+
+        print("The average entropy on the true label is {}".format(avg_test_entropy_on_true_label))
+
+        return acc_sample_graph, avg_test_variance_on_true_label, avg_test_entropy_on_true_label
+    

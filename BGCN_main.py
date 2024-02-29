@@ -8,7 +8,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 MIT License for more details.
 '''
 # import tensorflow as tf
-import tensorflow.compat.v1 as tf
+import tensorflow.compat.v1 as tf 
 import numpy as np
 from src.GNN_models import GnnModel
 from src.data_partition import data_partition_fix, data_partition_random
@@ -16,6 +16,7 @@ import random
 from src.utils import save_log_func
 import argparse
 import os
+import csv
 from src.flags import flags
 
 code_path = os.path.abspath('')
@@ -33,6 +34,7 @@ if __name__ == '__main__':
                         help='Save log or not')
     parser.add_argument('--random_partition', type=lambda s: s.lower() in ['true', 't', 'yes', '1'], default=True,
                         help='Save log or not')
+    parser.add_argument('--no_dropout', action='store_true', help='no dropout')
     parser.add_argument('--gpu', type=int, default=0, help='which gpu to use')
 
     args = parser.parse_args()
@@ -44,6 +46,9 @@ if __name__ == '__main__':
     random_partition = args.random_partition
     label_n_per_class = args.label_n_per_class
     gpu = args.gpu
+
+    if args.no_dropout:
+        FLAGS.dropout = 0.0
 
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu)
 
@@ -80,9 +85,17 @@ if __name__ == '__main__':
         "Wrong input data format"
 
     # ==================================Train Model===========================================
-
     GNN_Model = GnnModel(FLAGS, features, labels, adj, y_train, y_val, y_test, train_mask, val_mask,
                          test_mask, checkpt_name='model_1', model_name=model_name)
     GNN_Model.model_initialization()
-    GNN_Model.train()
+    acc_sample_graph, avg_test_variance_on_true_label, avg_test_entropy_on_true_label = GNN_Model.train()
 
+    fn = f'{args.dataset}'
+    if args.no_dropout:
+        fn += '_no_dropout'
+    fn += '.csv'
+    
+    with open(fn, 'a', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow([acc_sample_graph, avg_test_variance_on_true_label, avg_test_entropy_on_true_label])
+        

@@ -2,7 +2,8 @@
 Code reproduced from Thomas N. Kipf
 https://github.com/tkipf/gcn
 """
-import tensorflow as tf
+# import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import numpy as np
 
 

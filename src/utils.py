@@ -172,7 +172,7 @@ def metric_perp_avg(beta_samples, pi_samples, test_edge_set, y_test, delta):
 def get_node_neighbor_dict(adj, N):
     node_neighbors_dict = {}
     for i in range(N):
-        node = adj[i]
+        node = adj[[i], :]
         node_neighbors_dict[i] = csr_matrix.nonzero(node)[1]
     return node_neighbors_dict
 

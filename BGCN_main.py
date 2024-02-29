@@ -7,7 +7,8 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 MIT License for more details.
 '''
-import tensorflow as tf
+# import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import numpy as np
 from src.GNN_models import GnnModel
 from src.data_partition import data_partition_fix, data_partition_random

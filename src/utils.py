@@ -16,7 +16,7 @@ from scipy.sparse import csr_matrix
 import os, sys
 
 
-def save_log_func(code_path, dataset, model_name, trial_index, data_partition_seed):
+def save_log_func(code_path, dataset, model_name, trial_index, data_partition_seed, no_dropout):
 
     # Create log Directory and save log to txt
 
@@ -25,6 +25,8 @@ def save_log_func(code_path, dataset, model_name, trial_index, data_partition_se
         os.makedirs(os.path.dirname(log_dir))
     log_file_name = dataset + '_' + model_name + '_softmax_trail_' + str(trial_index) + '_random_seed_' + str(
         data_partition_seed) + '.txt'
+    if no_dropout:
+        log_file_name = log_file_name.replace('.txt', '_no_dropout.txt')
     sys.stdout = open(log_dir + log_file_name, 'w')
 
 

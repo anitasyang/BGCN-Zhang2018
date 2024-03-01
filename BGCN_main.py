@@ -58,7 +58,9 @@ if __name__ == '__main__':
     print("Data partition seed: {}".format(data_partition_seed))
     if save_log:
         file_name = dataset + '_' + model_name + '_softmax_trail_' + str(trial_index) + '_random_seed_' + str(
-        data_partition_seed) + '.txt'
+            data_partition_seed) + '.txt'
+        if args.no_dropout:
+            file_name = file_name.replace('.txt', '_no_dropout.txt')
         print("Save log mode activated, training log will be saved to /log/" + file_name)
 
     # ==================================Set random seed for result reproduce===============================
@@ -70,7 +72,7 @@ if __name__ == '__main__':
     # =============================================Save log=================================================
 
     if save_log:
-        save_log_func(code_path, dataset, model_name, trial_index, data_partition_seed)
+        save_log_func(code_path, dataset, model_name, trial_index, data_partition_seed, no_dropout=args.no_dropout)
 
     # =============================Load data=================================================
 
@@ -79,6 +81,7 @@ if __name__ == '__main__':
         adj, features, y_train, y_val, y_test, train_mask, val_mask, test_mask, labels = data_partition_fix(
             dataset_dir=dataset_dir, dataset_name=dataset, label_n_per_class=label_n_per_class)
     elif random_partition:
+        print("Random partition")
         adj, features, y_train, y_val, y_test, train_mask, val_mask, test_mask, labels = data_partition_random(
             dataset_dir=dataset_dir, dataset_name=dataset, label_n_per_class=label_n_per_class)
     else:

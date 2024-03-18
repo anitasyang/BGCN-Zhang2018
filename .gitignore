@@ -163,3 +163,6 @@ venv.bak/
 *.pyc
 *.py.class
 /tmp
+
+
+log/

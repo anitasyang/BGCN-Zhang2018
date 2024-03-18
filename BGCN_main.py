@@ -16,6 +16,7 @@ import random
 from src.utils import save_log_func
 import argparse
 import os
+import os.path as osp
 import csv
 from src.flags import flags
 
@@ -60,7 +61,7 @@ if __name__ == '__main__':
         file_name = dataset + '_' + model_name + '_softmax_trail_' + str(trial_index) + '_random_seed_' + str(
             data_partition_seed) + '.txt'
         if args.no_dropout:
-            file_name = file_name.replace('.txt', '_no_dropout.txt')
+            file_name = file_name.replace('.txt', '_no_dropout.txt')        
         print("Save log mode activated, training log will be saved to /log/" + file_name)
 
     # ==================================Set random seed for result reproduce===============================
@@ -91,14 +92,27 @@ if __name__ == '__main__':
     GNN_Model = GnnModel(FLAGS, features, labels, adj, y_train, y_val, y_test, train_mask, val_mask,
                          test_mask, checkpt_name='model_1', model_name=model_name)
     GNN_Model.model_initialization()
-    acc_sample_graph, avg_test_variance_on_true_label, avg_test_entropy_on_true_label = GNN_Model.train()
+
+    acc_sample_graph, avg_test_variance_on_true_label, \
+        avg_test_entropy_on_true_label, test_mean, test_variance = GNN_Model.train()
 
     fn = f'{args.dataset}'
     if args.no_dropout:
         fn += '_no_dropout'
     fn += '.csv'
     
+    # save mean and variance
+    if save_log:
+        # Directory to save mean and variance of predictions
+        dir = code_path + '/pred'
+        if not osp.exists(dir):
+            os.makedirs(dir)
+        mean_fn = osp.join(dir, file_name.replace('.txt', '_mean.npy'))
+        variance_fn = osp.join(dir, file_name.replace('.txt', '_variance.npy'))
+
+        np.save(mean_fn, test_mean)
+        np.save(variance_fn, test_variance)
+
     with open(fn, 'a', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow([acc_sample_graph, avg_test_variance_on_true_label, avg_test_entropy_on_true_label])
-        

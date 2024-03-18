@@ -25,7 +25,7 @@ tf.disable_eager_execution()
 
 class GnnModel:
     def __init__(self, FLAGs, node_features, one_hot_labels, adj, y_train, y_val, y_test, train_mask, val_mask, test_mask,
-                 checkpt_name,
+                 checkpt_name, dropout_only=False,
                  model_name='BGCN'):
 
         self.FLAGs = FLAGs
@@ -53,6 +53,12 @@ class GnnModel:
         self.model = None
         self.adj_sparse_tensor_orig = None
         self.features_sparse_tensor = None
+
+        # Ignore graph generation. Only use dropout.
+        self.dropout_only = dropout_only
+        if self.dropout_only:
+            print("Only use dropout in the model. No graph sampling.")
+            assert self.FLAGs.dropout > 0, "Dropout rate must be greater than 0 when using dropout only."
 
         # MMSBM model parameter
         self.MMSBM_max_itr = self.FLAGs.max_itr
@@ -230,12 +236,16 @@ class GnnModel:
                         self.train_block_model_estimators(better_initialization_flag=True, step_size_scaler=1,
                                                           max_iter=200)
 
-                    generate_graph = MMSBM_graph_generation(self.n, self.k, self.MMSBM_community_strength,
-                                                            self.MMSBM_membership, self.upper_tri_index)
-                    generate_graph = csr_matrix(generate_graph)
-                    adj_sparse_tensor_sample = [preprocess_adj(generate_graph)]
-                    self.soft_prediction_labels_OG, self.soft_prediction_labels_sample_graph = self.train_one_epoch(
-                        adj_sparse_tensor_sample, epoch)
+                    if not self.dropout_only:  # use generated graph to train
+                        generate_graph = MMSBM_graph_generation(self.n, self.k, self.MMSBM_community_strength,
+                                                                self.MMSBM_membership, self.upper_tri_index)
+                        generate_graph = csr_matrix(generate_graph)
+                        adj_sparse_tensor_sample = [preprocess_adj(generate_graph)]
+                        self.soft_prediction_labels_OG, self.soft_prediction_labels_sample_graph = self.train_one_epoch(
+                            adj_sparse_tensor_sample, epoch)
+                    else:  # use original graph to train
+                        self.soft_prediction_labels_OG, self.soft_prediction_labels_sample_graph = self.train_one_epoch(
+                            self.adj_sparse_tensor_orig, epoch)
 
                     # ===========save the softmax output from different weight samples=================
                     if epoch > self.FLAGs.epoch_to_start_collect_weights:
@@ -271,13 +281,15 @@ class GnnModel:
         print("Optimization Finished!")
         
         print("============= Variance of prediction score =============")
-        from src.utils_analysis import calculate_variance, calculate_entropy
+        from src.utils_analysis import calculate_mean_and_variance, calculate_entropy
         pred_score = np.array(pred_score)
-        variance = calculate_variance(pred_score)
+        mean, variance = calculate_mean_and_variance(pred_score)
+        test_mean = mean[self.test_set_index]
         test_variance = variance[self.test_set_index]
         test_labels = self.labels[self.test_set_index]
         test_variance_on_true_label = test_variance[
             np.arange(test_variance.shape[0]), test_labels]
+                
         avg_test_variance_on_true_label = np.mean(test_variance_on_true_label)
         print("The average variance on the true label is {}".format(avg_test_variance_on_true_label))
 
@@ -290,5 +302,8 @@ class GnnModel:
 
         print("The average entropy on the true label is {}".format(avg_test_entropy_on_true_label))
 
-        return acc_sample_graph, avg_test_variance_on_true_label, avg_test_entropy_on_true_label
+        # print("============= Mean and Variance =============")
+
+
+        return acc_sample_graph, avg_test_variance_on_true_label, avg_test_entropy_on_true_label, test_mean, test_variance
     

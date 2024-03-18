@@ -16,7 +16,8 @@ from scipy.sparse import csr_matrix
 import os, sys
 
 
-def save_log_func(code_path, dataset, model_name, trial_index, data_partition_seed, no_dropout):
+def save_log_func(code_path, dataset, model_name, trial_index,
+                  data_partition_seed, file_suffix=''):
 
     # Create log Directory and save log to txt
 
@@ -25,8 +26,8 @@ def save_log_func(code_path, dataset, model_name, trial_index, data_partition_se
         os.makedirs(os.path.dirname(log_dir))
     log_file_name = dataset + '_' + model_name + '_softmax_trail_' + str(trial_index) + '_random_seed_' + str(
         data_partition_seed) + '.txt'
-    if no_dropout:
-        log_file_name = log_file_name.replace('.txt', '_no_dropout.txt')
+    if file_suffix:
+        log_file_name = log_file_name.replace('.txt', f'_{file_suffix}.txt')
     sys.stdout = open(log_dir + log_file_name, 'w')
 
 
@@ -66,6 +67,7 @@ def graph_preparation(edges, nonedges, test_edges_n):
     y_test_set[0:int(test_edges_n/2)] = 1
 
     return edges_n, nonedges_n, test_set, y_test_set
+
 
 def edges_non_edges_index(adj, N, node_neighbors_dict):
     A_coo = coo_matrix(adj)

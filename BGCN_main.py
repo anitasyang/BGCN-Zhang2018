@@ -36,6 +36,7 @@ if __name__ == '__main__':
     parser.add_argument('--random_partition', type=lambda s: s.lower() in ['true', 't', 'yes', '1'], default=True,
                         help='Save log or not')
     parser.add_argument('--no_dropout', action='store_true', help='no dropout')
+    parser.add_argument('--dropout_only', action='store_true', help='only dropout')
     parser.add_argument('--gpu', type=int, default=0, help='which gpu to use')
 
     args = parser.parse_args()
@@ -58,10 +59,14 @@ if __name__ == '__main__':
     print("Trial index: {}".format(trial_index))
     print("Data partition seed: {}".format(data_partition_seed))
     if save_log:
-        file_name = dataset + '_' + model_name + '_softmax_trail_' + str(trial_index) + '_random_seed_' + str(
-            data_partition_seed) + '.txt'
         if args.no_dropout:
-            file_name = file_name.replace('.txt', '_no_dropout.txt')        
+            file_suffix = '_no_dropout'
+        elif args.dropout_only:
+            file_suffix = '_dropout_only'
+        else:
+            file_suffix = ''
+        file_name = dataset + '_' + model_name + '_softmax_trail_' + str(trial_index) + '_random_seed_' + str(
+            data_partition_seed) + f'{file_suffix}.txt'
         print("Save log mode activated, training log will be saved to /log/" + file_name)
 
     # ==================================Set random seed for result reproduce===============================
@@ -73,7 +78,7 @@ if __name__ == '__main__':
     # =============================================Save log=================================================
 
     if save_log:
-        save_log_func(code_path, dataset, model_name, trial_index, data_partition_seed, no_dropout=args.no_dropout)
+        save_log_func(code_path, dataset, model_name, trial_index, data_partition_seed, file_suffix)
 
     # =============================Load data=================================================
 
@@ -90,7 +95,7 @@ if __name__ == '__main__':
 
     # ==================================Train Model===========================================
     GNN_Model = GnnModel(FLAGS, features, labels, adj, y_train, y_val, y_test, train_mask, val_mask,
-                         test_mask, checkpt_name='model_1', model_name=model_name)
+                         test_mask, checkpt_name='model_1', dropout_only=args.dropout_only, model_name=model_name)
     GNN_Model.model_initialization()
 
     acc_sample_graph, avg_test_variance_on_true_label, \
